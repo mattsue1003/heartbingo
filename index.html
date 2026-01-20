@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心臟護理教學賓果與抽籤產生器 (含英文語音)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            .bingo-card {
+                width: 210mm;
+                height: 290mm;
+                padding: 20mm !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                display: flex;
+                flex-direction: column;
+            }
+            .bingo-grid {
+                flex-grow: 1;
+                margin: 20px 0;
+            }
+        }
+        
+        .bingo-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2px;
+            background-color: #333;
+            border: 2px solid #333;
+        }
+        .bingo-cell {
+            background-color: #fff;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 15px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            line-height: 1.4;
+        }
+        .drawn-word {
+            animation: pop 0.5s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 p-4 md:p-8 font-sans">
+
+    <!-- 控制面板 -->
+    <div class="no-print max-w-5xl mx-auto space-y-6">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-red-500">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 flex items-center">
+                ❤️ 心臟護理教學：聽力與術語應對
+            </h1>
+            <p class="text-gray-600">紙本「中文」+ 抽籤「英文顯示與語音」。訓練學員對醫學術語的聽力與認知。</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 左側：賓果卡設定 (中文) -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-red-600 flex items-center">
+                    🖨️ 產生中文賓果卡 (A4)
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">學員人數 (每人一張 A4)</label>
+                        <input type="number" id="cardCount" value="5" min="1" max="100" 
+                               class="w-full border-gray-300 border p-3 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="generateBingo()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition duration-200">
+                            更新排列
+                        </button>
+                        <button onclick="window.print()" class="flex-1 bg-gray-800 hover:bg-black text-white font-bold py-3 rounded-lg transition duration-200">
+                            列印 A4 紙本
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側：抽籤器 (英文 + 語音) -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-100">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-blue-600 flex items-center">
+                        🎲 英文術語抽籤器
+                    </h2>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-bold text-gray-400">語音引導</span>
+                        <button id="voiceToggle" onclick="toggleVoice()" class="w-12 h-6 bg-blue-600 rounded-full relative transition-colors duration-200 focus:outline-none">
+                            <div id="toggleCircle" class="absolute left-7 top-1 w-4 h-4 bg-white rounded-full transition-all duration-200"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center p-6 bg-blue-50 rounded-xl mb-4 min-h-[140px] flex flex-col justify-center border border-blue-100 relative group">
+                    <div id="currentDraw" class="text-4xl font-black text-blue-900 drawn-word tracking-tight">Ready?</div>
+                    <!-- 點擊文字可以重複播放語音 -->
+                    <button onclick="replayVoice()" title="點擊重新播放" class="mt-2 text-blue-400 hover:text-blue-600 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="drawKeyword()" id="drawBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition">
+                        抽籤 (英文)
+                    </button>
+                    <button onclick="resetDraw()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-4 rounded-lg transition">
+                        重置
+                    </button>
+                </div>
+                <div class="mt-4">
+                    <p class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Drawn Keywords:</p>
+                    <div id="drawHistory" class="flex flex-wrap gap-2 text-sm">
+                        <span class="italic text-gray-300">No history yet...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 賓果卡列印容器 -->
+    <div id="bingoContainer" class="max-w-[210mm] mx-auto mt-12 space-y-0">
+        <!-- 賓果卡會在這裡生成 -->
+    </div>
+
+    <script>
+        const keywordPairs = [
+            { cn: "冠狀動脈", en: "Coronary Arteries" },
+            { cn: "竇房結", en: "SA Node" },
+            { cn: "心臟瓣膜", en: "Cardiac Valves" },
+            { cn: "中隔", en: "Septum" },
+            { cn: "心輸出量", en: "Cardiac Output" },
+            { cn: "前/後負荷", en: "Preload and Afterload" },
+            { cn: "動作電位", en: "Action Potential" },
+            { cn: "射出分率", en: "Ejection Fraction" },
+            { cn: "急性心肌梗塞", en: "Myocardial Infarction" },
+            { cn: "心律不整", en: "Arrhythmia" },
+            { cn: "心衰竭", en: "Heart Failure" },
+            { cn: "心包填塞", en: "Cardiac Tamponade" },
+            { cn: "心電圖", en: "Electrocardiogram" },
+            { cn: "肌鈣蛋白", en: "Troponin" },
+            { cn: "心導管治療", en: "PCI" },
+            { cn: "去顫", en: "Defibrillation" }
+        ];
+
+        let remainingKeywords = [...keywordPairs];
+        let history = [];
+        let isVoiceEnabled = true;
+        let lastPicked = null;
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function toggleVoice() {
+            isVoiceEnabled = !isVoiceEnabled;
+            const btn = document.getElementById('voiceToggle');
+            const circle = document.getElementById('toggleCircle');
+            if (isVoiceEnabled) {
+                btn.classList.replace('bg-gray-300', 'bg-blue-600');
+                circle.style.left = '28px';
+            } else {
+                btn.classList.replace('bg-blue-600', 'bg-gray-300');
+                circle.style.left = '4px';
+            }
+        }
+
+        function speak(text) {
+            if (!isVoiceEnabled) return;
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'en-US';
+            msg.rate = 0.9;
+            window.speechSynthesis.speak(msg);
+        }
+
+        function replayVoice() {
+            if (lastPicked) speak(lastPicked.en);
+        }
+
+        function generateBingo() {
+            const container = document.getElementById('bingoContainer');
+            const count = document.getElementById('cardCount').value;
+            container.innerHTML = '';
+
+            for (let i = 0; i < count; i++) {
+                const cardKeywords = shuffle([...keywordPairs]);
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'bingo-card bg-white p-12 border border-gray-100 shadow-sm relative page-break';
+                
+                let html = `
+                    <div class="flex justify-between items-end mb-8 border-b-4 border-red-500 pb-4">
+                        <div>
+                            <h2 class="text-4xl font-black text-red-600 tracking-tighter uppercase">CARDIAC BINGO</h2>
+                            <p class="text-lg text-gray-500 font-bold italic">Listening & Recognition Challenge</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-sm text-gray-400 font-mono">ID: #${String(i+1).padStart(3, '0')}</span>
+                        </div>
+                    </div>
+                    <div class="bingo-grid">
+                `;
+
+                cardKeywords.forEach(pair => {
+                    html += `<div class="bingo-cell">${pair.cn}</div>`;
+                });
+
+                html += `
+                    </div>
+                    <div class="mt-12 grid grid-cols-2 gap-8 items-center border-t-2 border-gray-100 pt-8">
+                        <div>
+                            <p class="text-sm text-gray-400 mb-6 font-medium">Student Name: __________________________</p>
+                            <p class="text-sm text-gray-400 font-medium">Date: ______________________________</p>
+                        </div>
+                        <div class="bg-slate-50 p-5 rounded-xl text-xs text-gray-500 leading-relaxed border border-slate-100">
+                            <strong>Game Rules:</strong><br>
+                            Listen to the English term drawn by the teacher, and find the corresponding Chinese word on your card. Connect 2 lines to win!
+                        </div>
+                    </div>
+                `;
+                cardDiv.innerHTML = html;
+                container.appendChild(cardDiv);
+            }
+        }
+
+        function drawKeyword() {
+            if (remainingKeywords.length === 0) {
+                document.getElementById('currentDraw').innerText = "Game Over!";
+                document.getElementById('drawBtn').disabled = true;
+                return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * remainingKeywords.length);
+            lastPicked = remainingKeywords.splice(randomIndex, 1)[0];
+            history.push(lastPicked);
+
+            const display = document.getElementById('currentDraw');
+            display.classList.remove('drawn-word');
+            void display.offsetWidth; 
+            display.classList.add('drawn-word');
+            display.innerText = lastPicked.en;
+
+            speak(lastPicked.en);
+            updateHistory();
+        }
+
+        function updateHistory() {
+            const historyDiv = document.getElementById('drawHistory');
+            if (history.length === 0) {
+                historyDiv.innerHTML = '<span class="italic text-gray-300">No history yet...</span>';
+                return;
+            }
+            historyDiv.innerHTML = history.map(pair => 
+                `<span class="bg-blue-600 text-white px-3 py-1 rounded-full font-bold text-xs shadow-sm">${pair.en}</span>`
+            ).join('');
+        }
+
+        function resetDraw() {
+            remainingKeywords = [...keywordPairs];
+            history = [];
+            lastPicked = null;
+            document.getElementById('currentDraw').innerText = "Ready?";
+            document.getElementById('drawBtn').disabled = false;
+            updateHistory();
+        }
+
+        window.onload = generateBingo;
+    </script>
+</body>
+</html>
